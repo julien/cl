@@ -9,7 +9,7 @@
 #define PATH_SEPARATOR "/"
 
 char *get_db_path() {
-	unsigned int sizes[7];
+	unsigned int sizes[5];
 	unsigned int sizes_len = sizeof(sizes) / sizeof(sizes[0]);
 
 	char *home_dir = getenv("HOME");
@@ -25,9 +25,7 @@ char *get_db_path() {
 	}
 	sizes[2] = strlen(data_dir);
 	sizes[3] = strlen(PATH_SEPARATOR);
-	sizes[4] = strlen(NOTES_DIR);
-	sizes[5] = strlen(PATH_SEPARATOR);
-	sizes[6] = strlen(NOTES_DB);
+	sizes[4] = strlen(NOTES_DB);
 
 	unsigned int total_len = 0;
 	for (unsigned int i = 0; i < sizes_len; i++) {
@@ -39,9 +37,7 @@ char *get_db_path() {
 	strncat(dest, PATH_SEPARATOR, sizes[1]);
 	strncat(dest, data_dir, sizes[2]);
 	strncat(dest, PATH_SEPARATOR, sizes[3]);
-	strncat(dest, NOTES_DIR, sizes[4]);
-	strncat(dest, PATH_SEPARATOR, sizes[5]);
-	strncat(dest, NOTES_DB, sizes[6]);
+	strncat(dest, NOTES_DB, sizes[4]);
 	return dest;
 }
 
@@ -52,10 +48,11 @@ int main(void) {
 	//        -a   : add note
 	//        -d ID: delete note
 	//        -e ID: edit note
-	// 				-l   : list all notes
+	//        -l   : list all notes
 	//        -v ID: view note
 
 	char *db_path = get_db_path();
+
 	sqlite3 *db;
 	int rc = sqlite3_open(db_path, &db);
 	if (rc != SQLITE_OK) {
@@ -74,11 +71,12 @@ int main(void) {
 	char *err_msg = 0;
 	rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
 	if (rc != SQLITE_OK) {
-		fprintf(stderr, "SQL error: %s\n", err_msg);
+		fprintf(stderr, "sql error: %s\n", err_msg);
 		sqlite3_free(err_msg);
 		sqlite3_close(db);
 		return 1;
 	}
+
 	free(db_path);
 	sqlite3_close(db);
 
