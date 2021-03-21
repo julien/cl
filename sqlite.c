@@ -94,9 +94,30 @@ int list_callback(void *pArg, int argc, char **argv, char **columNames) {
 	return 0;
 }
 
+void list() {
+	puts("listing notes:");
+
+	sqlite3 *db = open_db();
+	int rc = create_table(db);
+	if (rc == -1) {
+		exit(EXIT_FAILURE);
+	}
+
+	char *sql = "SELECT id,title from notes;";
+	char *err_msg = 0;
+	rc = sqlite3_exec(db, sql, list_callback, 0, &err_msg);
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "sql error: %s\n", err_msg);
+		sqlite3_free(err_msg);
+		sqlite3_close(db);
+		exit(EXIT_FAILURE);
+	}
+	sqlite3_close(db);
+}
 
 int main(int argc, char **argv) {
 	int c;
+	static int id = 0;
 
 	static struct option long_options[] = {
 		{"add",    required_argument, 0, 'a'},
@@ -106,38 +127,70 @@ int main(int argc, char **argv) {
 		{0, 0, 0, 0},
 	};
 
-	int option_index = 0;
-	c = getopt_long(argc, argv, "advl", long_options, &option_index);
+	/* while(1) { */
 
-	if (c == -1) {
-		print_usage(argv[0]);
-		exit(EXIT_FAILURE);
-	}
+		int option_index = 0;
+		c = getopt_long(argc, argv, "adv:l:", long_options, &option_index);
 
-	switch(c) {
-		case 'l':
-			puts("listing notes:");
+		if (c == -1) {
+			print_usage(argv[0]);
+			exit(EXIT_FAILURE);
+		}
 
-			sqlite3 *db = open_db();
-			int rc = create_table(db);
-			if (rc == -1) {
-				exit(EXIT_FAILURE);
-			}
+		switch(c) {
+			/* case 0: */
+			/* 	if (optarg) */
+			/* 		printf(" with arg %s", optarg); */
+			/* 	break; */
 
-			char *sql = "SELECT id,title from notes;";
 
-			char *err_msg = 0;
-			rc = sqlite3_exec(db, sql, list_callback, 0, &err_msg);
-			if (rc != SQLITE_OK) {
-				fprintf(stderr, "sql error: %s\n", err_msg);
-				sqlite3_free(err_msg);
-				sqlite3_close(db);
-				return -1;
-			}
+			case 'd':
+				{
+					if (!argv[optind]) {
+						printf("nopes\n");
+						break;
+					}
+					printf("option -d with value %s\n", argv[optind]);
+					puts("warning: you're about to delete a note");
 
-			sqlite3_close(db);
-			break;
-	}
+					sqlite3 *db = open_db();
+					int rc = create_table(db);
+					if (rc == -1) {
+						exit(EXIT_FAILURE);
+					}
+
+					char *noteid = argv[optind];
+					char stmt[60];
+					sprintf(stmt, "DELETE FROM notes WHERE ID = %s;", noteid);
+					char *err_msg = 0;
+					rc = sqlite3_exec(db, stmt, 0, 0, &err_msg);
+					if (rc != SQLITE_OK) {
+						fprintf(stderr, "sql error: %s\n", err_msg);
+						sqlite3_free(err_msg);
+						sqlite3_close(db);
+						return -1;
+					}
+					printf("note %s deleted\n.", noteid);
+					sqlite3_close(db);
+					exit(EXIT_SUCCESS);
+				}
+				break;
+
+			case 'l':
+				list();
+				break;
+
+			/* default: */
+			/* 	break; */
+		}
+	/* } */
+
+	/* if (optind < argc) { */
+	/* 	printf("non-option argv elements: "); */
+	/* 	while (optind < argc) */
+	/* 		printf("%s ", argv[optind++]); */
+	/* 	putchar('\n'); */
+	/* } */
 
 	return EXIT_SUCCESS;
 }
