@@ -1,4 +1,5 @@
 #include <sqlite3.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,16 +42,7 @@ char *get_db_path() {
 	return dest;
 }
 
-int main(void) {
-
-	// TODO
-	// Options
-	//        -a   : add note
-	//        -d ID: delete note
-	//        -e ID: edit note
-	//        -l   : list all notes
-	//        -v ID: view note
-
+sqlite3 *open_db() {
 	char *db_path = get_db_path();
 
 	sqlite3 *db;
@@ -59,26 +51,93 @@ int main(void) {
 		fprintf(stderr, "can't open database: %s\n", sqlite3_errmsg(db));
 		free(db_path);
 		sqlite3_close(db);
-		return 1;
+		return NULL;
 	}
 
-	sqlite3_stmt *res;
+	free(db_path);
 
-	char *sql = "DROP TABLE IF EXISTS notes;"
-							"CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT,"
-							"title TEXT, body TEXT, date TEXT, done INT, label TEXT);";
+	return db;
+}
+
+int create_table(sqlite3 *db) {
+	char *sql = "CREATE TABLE IF NOT EXISTS notes(id INTEGER PRIMARY KEY AUTOINCREMENT,"
+	"title TEXT, body TEXT, date TEXT, done INT, label TEXT);";
 
 	char *err_msg = 0;
-	rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+	int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
 	if (rc != SQLITE_OK) {
 		fprintf(stderr, "sql error: %s\n", err_msg);
 		sqlite3_free(err_msg);
 		sqlite3_close(db);
-		return 1;
+		return -1;
 	}
 
-	free(db_path);
-	sqlite3_close(db);
+	return 0;
+}
+
+void print_usage(char *program_name) {
+	fprintf(stderr, "usage: %s [options]\n", program_name);
+	fprintf(stderr, "  -a/--add.........add a new note\n");
+	fprintf(stderr, "  -d/--delete id...delete note (specified by id)\n");
+	fprintf(stderr, "  -v/--view id.....view note (specified by id)\n");
+	fprintf(stderr, "  -l/--list........list all notes\n");
+}
+
+int list_callback(void *pArg, int argc, char **argv, char **columNames) {
+	char **ptr = argv;
+	int i = 0;
+	for (char *c = *ptr; c; c = *++ptr, i++) {
+		printf("%s ", c);
+		if (i == argc - 1) printf("\n");
+	}
 
 	return 0;
+}
+
+
+int main(int argc, char **argv) {
+	int c;
+
+	static struct option long_options[] = {
+		{"add",    required_argument, 0, 'a'},
+		{"delete", required_argument, 0, 'd'},
+		{"view",   required_argument, 0, 'v'},
+		{"list",   no_argument      , 0, 'l'},
+		{0, 0, 0, 0},
+	};
+
+	int option_index = 0;
+	c = getopt_long(argc, argv, "advl", long_options, &option_index);
+
+	if (c == -1) {
+		print_usage(argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	switch(c) {
+		case 'l':
+			puts("listing notes:");
+
+			sqlite3 *db = open_db();
+			int rc = create_table(db);
+			if (rc == -1) {
+				exit(EXIT_FAILURE);
+			}
+
+			char *sql = "SELECT id,title from notes;";
+
+			char *err_msg = 0;
+			rc = sqlite3_exec(db, sql, list_callback, 0, &err_msg);
+			if (rc != SQLITE_OK) {
+				fprintf(stderr, "sql error: %s\n", err_msg);
+				sqlite3_free(err_msg);
+				sqlite3_close(db);
+				return -1;
+			}
+
+			sqlite3_close(db);
+			break;
+	}
+
+	return EXIT_SUCCESS;
 }
