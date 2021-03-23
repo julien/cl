@@ -7,6 +7,7 @@
 #define CONFIG_DIR ".config"
 #define NOTES_DB "notes.db"
 #define NOTES_DIR "notes"
+#define NOTE_DONE_COLUMN 3
 #define NOTE_TEXT_LENGTH 512
 #define PATH_SEPARATOR "/"
 
@@ -77,10 +78,11 @@ void usage(char *program_name) {
 	fprintf(stderr, "Usage: %s [OPTION]... [ARGUMENT]...\n", program_name);
 	fprintf(stderr, "Simple program to manage notes\n");
 	fprintf(stderr, "  -a     add a new note\n");
-	fprintf(stderr, "  -d id  delete note specified by id\n");
+	fprintf(stderr, "  -d id  delete note (specified by id)\n");
 	fprintf(stderr, "  -h     print this message\n");
-	fprintf(stderr, "  -v id  view note specified by id\n");
 	fprintf(stderr, "  -l     list all notes\n");
+	fprintf(stderr, "  -m id  mark note (specified by id) as completed\n");
+	fprintf(stderr, "  -v id  view note (specified by id)\n");
 }
 
 int count_callback(void *pArg, int argc, char **argv, char **columNames) {
@@ -92,34 +94,37 @@ int count_callback(void *pArg, int argc, char **argv, char **columNames) {
 	return 0;
 }
 
-void delete(const char *id) {
-	sqlite3 *db = open_db();
-	create_table(db);
-
+int exists(sqlite3 *db, const char *id) {
 	char sql[128];
 	sprintf(sql, "SELECT count(*) FROM notes WHERE id = %s;", id);
 
 	int numrows = 0;
-	char *err1 = 0;
-	if (sqlite3_exec(db, sql, count_callback, &numrows, &err1) != SQLITE_OK) {
-		fprintf(stderr, "SQL ERrror: %s\n", err1);
-		sqlite3_free(err1);
+	char *err = 0;
+	if (sqlite3_exec(db, sql, count_callback, &numrows, &err) != SQLITE_OK) {
+		fprintf(stderr, "SQL ERrror: %s\n", err);
+		sqlite3_free(err);
 		sqlite3_close(db);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
+	return numrows;
+}
 
-	if (numrows == 0) {
+void delete(const char *id) {
+	sqlite3 *db = open_db();
+	create_table(db);
+
+	if (exists(db, id) == 0) {
 		printf("No notes with the id: %s where found.\n", id);
 		exit(EXIT_FAILURE);
 	}
 
-	memset(sql, 0, sizeof(sql));
+	char sql[128];
 	sprintf(sql, "DELETE FROM notes WHERE id = %s;", id);
 
-	char *err2 = 0;
-	if (sqlite3_exec(db, sql, 0, 0, &err2) != SQLITE_OK) {
-		fprintf(stderr, "SQL Error: %s\n", err2);
-		sqlite3_free(err2);
+	char *err = 0;
+	if (sqlite3_exec(db, sql, 0, 0, &err) != SQLITE_OK) {
+		fprintf(stderr, "SQL Error: %s\n", err);
+		sqlite3_free(err);
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
@@ -128,11 +133,22 @@ void delete(const char *id) {
 }
 
 int list_callback(void *pArg, int argc, char **argv, char **columNames) {
+
+	char **cols = columNames;
+	int numcols = 0;
+	for (char *a = *cols; a; a = *++cols, numcols++)
+		;
+	numcols = numcols-argc;
+
 	char **ptr = argv;
 	int i = 0;
 	for (char *c = *ptr; c; c = *++ptr, i++) {
-		printf("%s ", c);
-		if (i == argc - 1) printf("\n");
+		if (numcols == NOTE_DONE_COLUMN)
+	        printf("\e[9m%s\e[0m", c);
+		else
+			printf("%s ", c);
+
+		if (i == numcols-1) printf("\n");
 	}
 
 	return 0;
@@ -158,7 +174,7 @@ void list(void) {
 	}
 
 	memset(sql, 0, sizeof(sql));
-	sprintf(sql,"SELECT id,text FROM notes;");
+	sprintf(sql,"SELECT id,text,done FROM notes;");
 
 	char *err2 = 0;
 	if (sqlite3_exec(db, sql, list_callback, 0, &err2) != SQLITE_OK) {
@@ -219,10 +235,36 @@ void add(void) {
 	printf("Note added.\n");
 }
 
+void mark(char *id) {
+	sqlite3 *db = open_db();
+	create_table(db);
+
+	if (exists(db, id) == 0) {
+		printf("No note with the id %s where found.\n", id);
+		exit(EXIT_FAILURE);
+	}
+
+	char sql[128];
+	sprintf(sql, "UPDATE notes SET done = 1 WHERE id = %s;", id);
+
+	char *err = 0;
+	if (sqlite3_exec(db, sql, 0, 0, &err) != SQLITE_OK) {
+		fprintf(stderr, "SQL Error: %s\n", err);
+		sqlite3_free(err);
+		sqlite3_close(db);
+		exit(EXIT_FAILURE);
+	}
+	sqlite3_close(db);
+
+	printf("Note %s marked as completed.\n", id);
+}
+
 int main(int argc, char **argv) {
 	/* TODO:
-	 Add -e option to edit/-m mark as done
-	 Render items that are "done" with a strike */
+	   Escape text when inserting
+	   Limit text when "listing" (i.e. use -v to show more)
+	   Add -e option to edit
+	*/
 
 	char *prg = argv[0];
 
@@ -232,7 +274,7 @@ int main(int argc, char **argv) {
 	}
 
 	int opt;
-	while ((opt = getopt(argc, argv, "ad:hlv:")) != -1) {
+	while ((opt = getopt(argc, argv, "ad:hlm:v:")) != -1) {
 		switch (opt) {
 			case 'a':
 				add();
@@ -245,6 +287,9 @@ int main(int argc, char **argv) {
 				break;
 			case 'l':
 				list();
+				break;
+			case 'm':
+				mark(optarg);
 				break;
 			case 'v':
 				view(optarg);
