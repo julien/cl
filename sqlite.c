@@ -133,7 +133,6 @@ void delete(const char *id) {
 }
 
 int list_callback(void *pArg, int argc, char **argv, char **columNames) {
-
 	char **cols = columNames;
 	int numcols = 0;
 	for (char *a = *cols; a; a = *++cols, numcols++)
@@ -143,10 +142,15 @@ int list_callback(void *pArg, int argc, char **argv, char **columNames) {
 	char **ptr = argv;
 	int i = 0;
 	for (char *c = *ptr; c; c = *++ptr, i++) {
+		if (strcmp(c, "1") == 0) {
+			printf("\n");
+			continue;
+		}
+
 		if (numcols == NOTE_DONE_COLUMN)
-	        printf("\e[9m%s\e[0m", c);
+	        printf("\e[9m%s\e[0m ", c);
 		else
-			printf("%s ", c);
+			printf("%s  ", c);
 
 		if (i == numcols-1) printf("\n");
 	}
@@ -189,6 +193,11 @@ void list(void) {
 void view(const char *id) {
 	sqlite3 *db = open_db();
 	create_table(db);
+
+	if (exists(db, id) == 0) {
+		printf("No notes with the id %s where found.\n", id);
+		exit(EXIT_FAILURE);
+	}
 
 	char sql[128];
 	sprintf(sql, "SELECT text FROM notes WHERE id = %s;", id);
