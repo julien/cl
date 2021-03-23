@@ -76,7 +76,8 @@ void create_table(sqlite3 *db) {
 
 void usage(char *program_name) {
 	fprintf(stderr, "Usage: %s [OPTION]... [ARGUMENT]...\n", program_name);
-	fprintf(stderr, "Simple program to manage notes\n");
+	fprintf(stderr, "A Program to manage notes\n\n");
+	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  -a     add a new note\n");
 	fprintf(stderr, "  -d id  delete note (specified by id)\n");
 	fprintf(stderr, "  -h     print this message\n");
