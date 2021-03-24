@@ -84,7 +84,7 @@ void usage(char *program_name) {
 	fprintf(stdout, "\nIf no options are provided, the notes will be listed.\n");
 }
 
-int count_callback(void *pArg, int argc, char **argv, char **columNames) {
+int get_rows(void *pArg, int argc, char **argv, char **columNames) {
 	if (argc != 1) return 0;
 
 	char **ptr = argv;
@@ -99,7 +99,7 @@ int exists(sqlite3 *db, const char *id) {
 
 	int numrows = 0;
 	char *err = 0;
-	if (sqlite3_exec(db, sql, count_callback, &numrows, &err) != SQLITE_OK) {
+	if (sqlite3_exec(db, sql, get_rows, &numrows, &err) != SQLITE_OK) {
 		fprintf(stderr, "SQL ERrror: %s\n", err);
 		sqlite3_free(err);
 		sqlite3_close(db);
@@ -168,7 +168,7 @@ void list(void) {
 	char sql[64] = "SELECT count(*) FROM notes;";
 	char *err1 = 0;
 	int numrows = 0;
-	if (sqlite3_exec(db, sql, count_callback, &numrows, &err1) != SQLITE_OK) {
+	if (sqlite3_exec(db, sql, get_rows, &numrows, &err1) != SQLITE_OK) {
 		fprintf(stderr, "SQL Error: %s\n", err1);
 		sqlite3_free(err1);
 		sqlite3_close(db);
