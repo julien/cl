@@ -46,18 +46,14 @@ char *get_db_path(void) {
 
 sqlite3 *open_db(void) {
 	char *db_path = get_db_path();
-
 	sqlite3 *db;
-	int rc = sqlite3_open(db_path, &db);
-	if (rc != SQLITE_OK) {
+	if (sqlite3_open(db_path, &db) != SQLITE_OK) {
 		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
 		free(db_path);
 		sqlite3_close(db);
 		return NULL;
 	}
-
 	free(db_path);
-
 	return db;
 }
 
