@@ -338,9 +338,6 @@ void edit(char *id) {
 }
 
 int main(int argc, char **argv) {
-	/* TODO:
-	   Limit text when "listing" (i.e. use -v to show more)
-	*/
 	char *prg = argv[0];
 
 	if (argc < 2) {
