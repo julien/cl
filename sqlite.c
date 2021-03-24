@@ -8,7 +8,8 @@
 #define NOTES_DB "notes.db"
 #define NOTES_DIR "notes"
 #define NOTE_DONE_COLUMN 3
-#define NOTE_TEXT_LENGTH 512
+#define NOTE_TEXT_LENGTH 1024
+#define NOTE_MAX_DISPLAY_LENGTH 50
 #define PATH_SEPARATOR "/"
 
 char *get_db_path(void) {
@@ -135,7 +136,7 @@ void delete(const char *id) {
 	printf("Note %s deleted.\n.", id);
 }
 
-int list_callback(void *pArg, int argc, char **argv, char **columNames) {
+int print_notes(void *pArg, int argc, char **argv, char **columNames) {
 	char **cols = columNames;
 	int numcols = 0;
 	for (char *a = *cols; a; a = *++cols, numcols++)
@@ -145,15 +146,24 @@ int list_callback(void *pArg, int argc, char **argv, char **columNames) {
 	char **ptr = argv;
 	int i = 0;
 	for (char *c = *ptr; c; c = *++ptr, i++) {
+		/* (Dirty) check to hide "done" column */
 		if (strcmp(c, "1") == 0) {
 			printf("\n");
 			continue;
 		}
 
+		/* Truncate */
+		size_t len = strlen(c);
+		if (len >= NOTE_MAX_DISPLAY_LENGTH) {
+			for (int j = NOTE_MAX_DISPLAY_LENGTH-3; j < NOTE_MAX_DISPLAY_LENGTH; j++)
+				c[j] = '.';
+			c[NOTE_MAX_DISPLAY_LENGTH] = '\0';
+		}
+
 		if (numcols == NOTE_DONE_COLUMN)
 	        printf("\e[9m%s\e[0m ", c);
 		else
-			printf("%s  ", c);
+			printf("%s ", c);
 
 		if (i == numcols-1) printf("\n");
 	}
@@ -184,13 +194,22 @@ void list(void) {
 	sprintf(sql,"SELECT id,text,done FROM notes;");
 
 	char *err2 = 0;
-	if (sqlite3_exec(db, sql, list_callback, 0, &err2) != SQLITE_OK) {
+	if (sqlite3_exec(db, sql, print_notes, 0, &err2) != SQLITE_OK) {
 		fprintf(stderr, "SQL Error: %s\n", err2);
 		sqlite3_free(err2);
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
 	sqlite3_close(db);
+}
+
+int print_note(void *pArg, int argc, char **argv, char **columNames) {
+	char **ptr = argv;
+	for (char *c = *ptr; c; c = *++ptr) {
+		printf("%s ", c);
+	}
+	printf("\n");
+	return 0;
 }
 
 void view(const char *id) {
@@ -207,7 +226,7 @@ void view(const char *id) {
 	sprintf(sql, "SELECT text FROM notes WHERE id = %s;", id);
 
 	char *err = 0;
-	if (sqlite3_exec(db, sql, list_callback, 0, &err) != SQLITE_OK) {
+	if (sqlite3_exec(db, sql, print_note, 0, &err) != SQLITE_OK) {
 		fprintf(stderr, "SQL Error: %s\n", err);
 		sqlite3_free(err);
 		sqlite3_close(db);
