@@ -161,7 +161,7 @@ int print_notes(void *pArg, int argc, char **argv, char **columNames) {
 		}
 
 		if (numcols == NOTE_DONE_COLUMN)
-	        printf("\e[9m%s\e[0m ", c);
+			printf("\e[9m%s\e[0m ", c);
 		else
 			printf("%s ", c);
 
