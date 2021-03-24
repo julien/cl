@@ -71,15 +71,17 @@ void create_table(sqlite3 *db) {
 }
 
 void usage(char *program_name) {
-	fprintf(stderr, "Usage: %s [OPTION]... [ARGUMENT]...\n", program_name);
-	fprintf(stderr, "A Program to manage notes\n\n");
-	fprintf(stderr, "Options:\n");
-	fprintf(stderr, "  -a     add a new note\n");
-	fprintf(stderr, "  -d id  delete note (specified by id)\n");
-	fprintf(stderr, "  -h     print this message\n");
-	fprintf(stderr, "  -l     list all notes\n");
-	fprintf(stderr, "  -m id  mark note (specified by id) as completed\n");
-	fprintf(stderr, "  -v id  view note (specified by id)\n");
+	fprintf(stdout, "Usage: %s [OPTION]... [ARGUMENT]...\n", program_name);
+	fprintf(stdout, "Simple note taking\n\n");
+	fprintf(stdout, "Options:\n");
+	fprintf(stdout, "  -a     add a new note\n");
+	fprintf(stdout, "  -d id  delete note (specified by id)\n");
+	fprintf(stdout, "  -e id  edit note (specified by id)\n");
+	fprintf(stdout, "  -h     print this message\n");
+	fprintf(stdout, "  -l     list all notes\n");
+	fprintf(stdout, "  -m id  mark note (specified by id) as completed\n");
+	fprintf(stdout, "  -v id  view note (specified by id)\n");
+	fprintf(stdout, "\nIf no options are provided, the notes will be listed.\n");
 }
 
 int count_callback(void *pArg, int argc, char **argv, char **columNames) {
