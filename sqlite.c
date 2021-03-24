@@ -113,22 +113,26 @@ void delete(const char *id) {
 	create_table(db);
 
 	if (exists(db, id) == 0) {
-		printf("No notes with the id: %s where found.\n", id);
-		exit(EXIT_FAILURE);
-	}
-
-	char sql[128];
-	sprintf(sql, "DELETE FROM notes WHERE id = %s;", id);
-
-	char *err = 0;
-	if (sqlite3_exec(db, sql, 0, 0, &err) != SQLITE_OK) {
-		fprintf(stderr, "SQL Error: %s\n", err);
-		sqlite3_free(err);
+		printf("Note %s not found.\n", id);
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
-	printf("Note %s deleted.\n.", id);
+
+	char *sql = "DELETE FROM notes WHERE id = ?;";
+	size_t size = strlen(sql) + strlen(id);
+	sqlite3_stmt *stmt;
+
+	if (sqlite3_prepare_v2(db, sql, size, &stmt, NULL) != SQLITE_OK) {
+		sqlite3_close(db);
+		printf("Couldn't delete note.\n");
+		exit(EXIT_FAILURE);
+	}
+	sqlite3_bind_int(stmt, 1, atoi(id));
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
 	sqlite3_close(db);
+
+	printf("Note %s deleted.\n.", id);
 }
 
 int list_callback(void *pArg, int argc, char **argv, char **columNames) {
@@ -194,7 +198,8 @@ void view(const char *id) {
 	create_table(db);
 
 	if (exists(db, id) == 0) {
-		printf("No notes with the id %s where found.\n", id);
+		printf("Note %s not found.\n", id);
+		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
 
@@ -213,7 +218,7 @@ void view(const char *id) {
 
 void add(void) {
 	char text[NOTE_TEXT_LENGTH];
-	printf("Add some text for this note and hit ENTER:\n");
+	printf("(hit ENTER to finish):\n");
 	fflush(stdout);
 	if (fgets(text, NOTE_TEXT_LENGTH, stdin) == NULL)
 		exit(EXIT_FAILURE);
@@ -227,17 +232,18 @@ void add(void) {
 	sqlite3 *db = open_db();
 	create_table(db);
 
-	int s = len+40;
-	char sql[s];
-	sprintf(sql, "INSERT INTO notes(text) values('%s');", text);
+	char *sql = "INSERT INTO notes(text) values(?);";
+	size_t size = strlen(sql) + len;
+	sqlite3_stmt *stmt;
 
-	char *err = 0;
-	if (sqlite3_exec(db, sql, 0, 0, &err) != SQLITE_OK) {
-		fprintf(stderr, "SQL Error: %s\n", err);
-		sqlite3_free(err);
+	if (sqlite3_prepare_v2(db, sql, size, &stmt, NULL) != SQLITE_OK) {
 		sqlite3_close(db);
+		printf("Couldn't add note.\n");
 		exit(EXIT_FAILURE);
 	}
+	sqlite3_bind_text(stmt, 1, text, len, NULL);
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
 	sqlite3_close(db);
 
 	printf("Note added.\n");
@@ -248,32 +254,74 @@ void mark(char *id) {
 	create_table(db);
 
 	if (exists(db, id) == 0) {
-		printf("No note with the id %s where found.\n", id);
-		exit(EXIT_FAILURE);
-	}
-
-	char sql[128];
-	sprintf(sql, "UPDATE notes SET done = 1 WHERE id = %s;", id);
-
-	char *err = 0;
-	if (sqlite3_exec(db, sql, 0, 0, &err) != SQLITE_OK) {
-		fprintf(stderr, "SQL Error: %s\n", err);
-		sqlite3_free(err);
+		printf("Note %s not found.\n", id);
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
+
+	char *sql = "UPDATE notes SET done = 1 WHERE id = ?;";
+	size_t size = strlen(sql) + strlen(id);
+	sqlite3_stmt *stmt;
+
+	if (sqlite3_prepare_v2(db, sql, size, &stmt, NULL) != SQLITE_OK) {
+		sqlite3_close(db);
+		printf("Couldn't mark note as complete.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	sqlite3_bind_int(stmt, 1, atoi(id));
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
 	sqlite3_close(db);
 
 	printf("Note %s marked as completed.\n", id);
 }
 
+void edit(char *id) {
+	sqlite3 *db = open_db();
+	create_table(db);
+
+	if (exists(db, id) == 0) {
+		printf("Note %s not found.\n", id);
+		sqlite3_close(db);
+		exit(EXIT_FAILURE);
+	}
+
+	char text[NOTE_TEXT_LENGTH];
+	printf("(hit ENTER to finish):\n");
+	fflush(stdout);
+	if (fgets(text, NOTE_TEXT_LENGTH, stdin) == NULL)
+		exit(EXIT_FAILURE);
+
+	size_t len = strlen(text);
+	if (len < 1) {
+		exit(EXIT_FAILURE);
+	}
+	text[len-1] = '\0';
+
+	char *sql = "UPDATE notes SET text = ? WHERE id = ?;";
+	size_t size = strlen(sql) + strlen(text) + strlen(id);
+	sqlite3_stmt *stmt;
+
+	if (sqlite3_prepare_v2(db, sql, size, &stmt, NULL) != SQLITE_OK) {
+		sqlite3_close(db);
+		printf("Couldn't update note.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	sqlite3_bind_text(stmt, 1, text, strlen(text), NULL);
+	sqlite3_bind_int(stmt, 2, atoi(id));
+	sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	sqlite3_close(db);
+
+	printf("Note %s updated.\n", id);
+}
+
 int main(int argc, char **argv) {
 	/* TODO:
-	   Escape text when inserting
 	   Limit text when "listing" (i.e. use -v to show more)
-	   Add -e option to edit
 	*/
-
 	char *prg = argv[0];
 
 	if (argc < 2) {
@@ -282,13 +330,16 @@ int main(int argc, char **argv) {
 	}
 
 	int opt;
-	while ((opt = getopt(argc, argv, "ad:hlm:v:")) != -1) {
+	while ((opt = getopt(argc, argv, "ad:e:hlm:v:")) != -1) {
 		switch (opt) {
 			case 'a':
 				add();
 				break;
 			case 'd':
 				delete(optarg);
+				break;
+			case 'e':
+				edit(optarg);
 				break;
 			case 'h':
 				usage(prg);
