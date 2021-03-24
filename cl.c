@@ -348,27 +348,13 @@ int main(int argc, char **argv) {
 	int opt;
 	while ((opt = getopt(argc, argv, "ad:e:hlm:v:")) != -1) {
 		switch (opt) {
-			case 'a':
-				add();
-				break;
-			case 'd':
-				delete(optarg);
-				break;
-			case 'e':
-				edit(optarg);
-				break;
-			case 'h':
-				usage(prg);
-				break;
-			case 'l':
-				list();
-				break;
-			case 'm':
-				mark(optarg);
-				break;
-			case 'v':
-				view(optarg);
-				break;
+			case 'a': add(); break;
+			case 'd': delete(optarg); break;
+			case 'e': edit(optarg); break;
+			case 'h': usage(prg); break;
+			case 'l': list(); break;
+			case 'm': mark(optarg); break;
+			case 'v': view(optarg); break;
 			default:
 				fprintf(stderr, "Try '%s -h' for more information.\n", prg);
 				break;
