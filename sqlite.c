@@ -303,7 +303,7 @@ int main(int argc, char **argv) {
 				view(optarg);
 				break;
 			default:
-				printf("Try '%s -h' for more information.\n", prg);
+				fprintf(stderr, "Try '%s -h' for more information.\n", prg);
 				break;
 		}
 	}
