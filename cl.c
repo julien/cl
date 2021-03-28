@@ -12,7 +12,8 @@
 #define NOTE_MAX_DISPLAY_LENGTH 50
 #define PATH_SEPARATOR "/"
 
-char *get_db_path(void) {
+static char
+*get_db_path(void) {
 	unsigned int sizes[5];
 	unsigned int sizes_len = sizeof(sizes) / sizeof(sizes[0]);
 
@@ -45,7 +46,8 @@ char *get_db_path(void) {
 	return dest;
 }
 
-sqlite3 *open_db(void) {
+static sqlite3
+*open_db(void) {
 	char *db_path = get_db_path();
 	sqlite3 *db;
 	if (sqlite3_open(db_path, &db) != SQLITE_OK) {
@@ -58,7 +60,8 @@ sqlite3 *open_db(void) {
 	return db;
 }
 
-void create_table(sqlite3 *db) {
+static void
+create_table(sqlite3 *db) {
 	char *sql = "CREATE TABLE IF NOT EXISTS notes(id INTEGER PRIMARY KEY "
 		"AUTOINCREMENT, text TEXT, done INT);";
 
@@ -71,7 +74,8 @@ void create_table(sqlite3 *db) {
 	}
 }
 
-void usage(char *program_name) {
+static void
+usage(char *program_name) {
 	fprintf(stdout, "Usage: %s [OPTION]... [ARGUMENT]...\n", program_name);
 	fprintf(stdout, "Simple note taking\n\n");
 	fprintf(stdout, "Options:\n");
@@ -85,7 +89,8 @@ void usage(char *program_name) {
 	fprintf(stdout, "\nIf no options are provided, the notes will be listed.\n");
 }
 
-int get_rows(void *pArg, int argc, char **argv, char **columNames) {
+static int
+get_rows(void *pArg, int argc, char **argv, char **columNames) {
 	if (argc != 1) return 0;
 
 	char **ptr = argv;
@@ -94,7 +99,8 @@ int get_rows(void *pArg, int argc, char **argv, char **columNames) {
 	return 0;
 }
 
-int exists(sqlite3 *db, const char *id) {
+static int
+exists(sqlite3 *db, const char *id) {
 	char sql[128];
 	sprintf(sql, "SELECT count(*) FROM notes WHERE id = %s;", id);
 
@@ -109,7 +115,8 @@ int exists(sqlite3 *db, const char *id) {
 	return numrows;
 }
 
-void delete(const char *id) {
+static void
+delete(const char *id) {
 	sqlite3 *db = open_db();
 	create_table(db);
 
@@ -136,7 +143,8 @@ void delete(const char *id) {
 	printf("Note %s deleted.\n.", id);
 }
 
-int print_notes(void *pArg, int argc, char **argv, char **columNames) {
+static int
+print_notes(void *pArg, int argc, char **argv, char **columNames) {
 	char **cols = columNames;
 	int numcols = 0;
 	for (char *a = *cols; a; a = *++cols, numcols++)
@@ -171,7 +179,8 @@ int print_notes(void *pArg, int argc, char **argv, char **columNames) {
 	return 0;
 }
 
-void list(void) {
+static void
+list(void) {
 	sqlite3 *db = open_db();
 	create_table(db);
 
@@ -203,7 +212,8 @@ void list(void) {
 	sqlite3_close(db);
 }
 
-int print_note(void *pArg, int argc, char **argv, char **columNames) {
+static int
+print_note(void *pArg, int argc, char **argv, char **columNames) {
 	char **ptr = argv;
 	for (char *c = *ptr; c; c = *++ptr) {
 		printf("%s ", c);
@@ -212,7 +222,8 @@ int print_note(void *pArg, int argc, char **argv, char **columNames) {
 	return 0;
 }
 
-void view(const char *id) {
+static void
+view(const char *id) {
 	sqlite3 *db = open_db();
 	create_table(db);
 
@@ -235,7 +246,8 @@ void view(const char *id) {
 	sqlite3_close(db);
 }
 
-void add(void) {
+void
+add(void) {
 	char text[NOTE_TEXT_LENGTH];
 	printf("(hit ENTER to finish):\n");
 	fflush(stdout);
@@ -268,7 +280,8 @@ void add(void) {
 	printf("Note added.\n");
 }
 
-void mark(char *id) {
+void
+mark(char *id) {
 	sqlite3 *db = open_db();
 	create_table(db);
 
@@ -296,7 +309,8 @@ void mark(char *id) {
 	printf("Note %s marked as completed.\n", id);
 }
 
-void edit(char *id) {
+void
+edit(char *id) {
 	sqlite3 *db = open_db();
 	create_table(db);
 
@@ -337,7 +351,8 @@ void edit(char *id) {
 	printf("Note %s updated.\n", id);
 }
 
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv) {
 	char *prg = argv[0];
 
 	if (argc < 2) {
