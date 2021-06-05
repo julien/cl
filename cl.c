@@ -6,7 +6,6 @@
 
 #define CONFIG_DIR ".config"
 #define NOTES_DB "notes.db"
-#define NOTES_DIR "notes"
 #define NOTE_DONE_COLUMN 3
 #define NOTE_TEXT_LENGTH 1024
 #define NOTE_MAX_DISPLAY_LENGTH 50
