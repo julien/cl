@@ -36,12 +36,17 @@ static char
 		total_len += sizes[i];
 	}
 
-	char *dest = (char *)malloc(total_len * sizeof(char));
+	char *dest = (char *)malloc(total_len + 1 * sizeof(char));
+	memset(dest, 0, total_len*sizeof(char));
+
 	strncat(dest, home_dir, sizes[0]);
 	strncat(dest, PATH_SEPARATOR, sizes[1]);
 	strncat(dest, data_dir, sizes[2]);
 	strncat(dest, PATH_SEPARATOR, sizes[3]);
 	strncat(dest, NOTES_DB, sizes[4]);
+
+	dest[total_len] = '\0';
+
 	return dest;
 }
 
