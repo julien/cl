@@ -35,7 +35,7 @@ fn main() {
         2 => {
             let cmd = &args[1].replace("-", "").to_lowercase();
 
-            match &cmd.to_lowercase()[..] {
+            match &cmd[..] {
                 "a" => {
                     match add() {
                         Err(e) => {
@@ -60,11 +60,26 @@ fn main() {
             };
         }
         3 => {
-            let cmd = &args[1];
-            let id = &args[2];
+            let cmd = &args[1].replace("-", "").to_lowercase();
+            let id = args[2].parse::<u32>().unwrap_or(0);
 
-            println!("cmd {}, id {}", cmd, id);
-            // TODO: Check args ...
+            if id == 0 {
+                usage(program_name);
+                std::process::exit(1);
+            }
+
+            match &cmd[..] {
+                "d" => {
+                    match delete(id) {
+                        Err(_) => {
+                            println!("Couldn't delete note.");
+                            std::process::exit(1);
+                        }
+                        _ => (),
+                    };
+                }
+                _ => usage(program_name),
+            };
         }
         _ => usage(program_name),
     }
@@ -82,62 +97,6 @@ fn usage(program_name: &str) {
     println!("  -m id  mark note (specified by id) as completed");
     println!("  -v id  view note (specified by id)");
     println!("\nIf no options are provided, the notes will be listed.");
-}
-
-fn list() -> Result<usize, Error> {
-    match create_table() {
-        Err(e) => {
-            return Err(e);
-        }
-        _ => (),
-    };
-
-    let db_path = get_db_path();
-    let conn = Connection::open(db_path)?;
-
-    let mut stmt = conn.prepare("SELECT count(*) FROM notes;")?;
-    let iter = stmt.query_map([], |row| Ok(Counter { total: row.get(0)? }))?;
-
-    let results: Vec<Result<Counter, Error>> = iter.collect();
-    let result = match results.get(0).unwrap() {
-        Ok(v) => v.total,
-        Err(_) => 0,
-    };
-
-    if result == 0 {
-        println!("No notes where found.");
-        println!("Try with the -h option for more information.");
-    }
-
-    let mut stmt = conn.prepare("SELECT * FROM notes;")?;
-    let iter = stmt.query_map([], |row| {
-        Ok(Note {
-            id: row.get(0)?,
-            text: row.get(1)?,
-            done: row.get(2)?,
-        })
-    })?;
-
-    for note in iter {
-        match note {
-            Ok(v) => {
-                let mut text = v.text;
-                if text.len() >= NOTE_MAX_DISPLAY_LENGTH {
-                    text.truncate(NOTE_MAX_DISPLAY_LENGTH - 3);
-                    text.push_str("...");
-                }
-
-                if let Some(1) = v.done {
-                    println!("\x1b[9m{} {}\x1b[0m ", v.id, text);
-                } else {
-                    println!("{} {}", v.id, text);
-                }
-            }
-            Err(_) => (),
-        }
-    }
-    // XXX: Souldn't this return the list of notes?
-    Ok(result)
 }
 
 // XXX: Shouldn't this return &str instead?
@@ -211,4 +170,86 @@ fn add() -> Result<(), Error> {
     )?;
     println!("Note added.");
     Ok(())
+}
+
+fn delete(id: u32) -> Result<(), Error> {
+    match create_table() {
+        Err(e) => {
+            return Err(e);
+        }
+        _ => (),
+    };
+
+    let db_path = get_db_path();
+    let conn = Connection::open(db_path)?;
+    let mut stmt = conn.prepare("SELECT count(*) FROM notes WHERE id = ?;")?;
+    let iter = stmt.query_map([id], |row| Ok(Counter { total: row.get(0)? }))?;
+    let results: Vec<Result<Counter, Error>> = iter.collect();
+    let result = match results.get(0).unwrap() {
+        Ok(v) => v.total,
+        Err(_) => 0,
+    };
+
+    if result == 0 {
+        println!("Note {} not found.", id);
+        std::process::exit(1);
+    }
+
+    conn.execute("DELETE FROM notes WHERE id = ?;", [id])?;
+    println!("Note deleted.");
+    Ok(())
+}
+
+fn list() -> Result<usize, Error> {
+    match create_table() {
+        Err(e) => {
+            return Err(e);
+        }
+        _ => (),
+    };
+
+    let db_path = get_db_path();
+    let conn = Connection::open(db_path)?;
+    let mut stmt = conn.prepare("SELECT count(*) FROM notes;")?;
+    let iter = stmt.query_map([], |row| Ok(Counter { total: row.get(0)? }))?;
+    let results: Vec<Result<Counter, Error>> = iter.collect();
+    let result = match results.get(0).unwrap() {
+        Ok(v) => v.total,
+        Err(_) => 0,
+    };
+
+    if result == 0 {
+        println!("No notes where found.");
+        println!("Try with the -h option for more information.");
+    }
+
+    let mut stmt = conn.prepare("SELECT * FROM notes;")?;
+    let iter = stmt.query_map([], |row| {
+        Ok(Note {
+            id: row.get(0)?,
+            text: row.get(1)?,
+            done: row.get(2)?,
+        })
+    })?;
+
+    for note in iter {
+        match note {
+            Ok(v) => {
+                let mut text = v.text;
+                if text.len() >= NOTE_MAX_DISPLAY_LENGTH {
+                    text.truncate(NOTE_MAX_DISPLAY_LENGTH - 3);
+                    text.push_str("...");
+                }
+
+                if let Some(1) = v.done {
+                    println!("\x1b[9m{} {}\x1b[0m ", v.id, text);
+                } else {
+                    println!("{} {}", v.id, text);
+                }
+            }
+            Err(_) => (),
+        }
+    }
+    // XXX: Souldn't this return the list of notes?
+    Ok(result)
 }
