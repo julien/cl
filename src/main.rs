@@ -87,6 +87,15 @@ fn main() {
                         _ => (),
                     };
                 }
+                "v" => {
+                    match view(id) {
+                        Err(_) => {
+                            println!("Couldn't view note {}.", id);
+                            std::process::exit(1);
+                        }
+                        _ => (),
+                    };
+                }
                 _ => usage(program_name),
             };
         }
@@ -293,5 +302,42 @@ fn mark(id: u32) -> Result<(), Error> {
     let conn = Connection::open(db_path)?;
     conn.execute("UPDATE notes SET done = 1 WHERE id = ?;", [id])?;
     println!("Note {} marked as completed.", id);
+    Ok(())
+}
+
+fn view(id: u32) -> Result<(), Error> {
+    let result = match exists(id) {
+        Err(e) => {
+            return Err(e);
+        }
+        Ok(v) => v,
+    };
+
+    if result == 0 {
+        println!("Note {} not found.", id);
+        std::process::exit(1);
+    }
+
+    let db_path = get_db_path();
+    let conn = Connection::open(db_path)?;
+    let mut stmt = conn.prepare("SELECT id,text,done FROM notes WHERE id = ?;")?;
+    let iter = stmt.query_map([id], |row| {
+        Ok(Note {
+            id: row.get(0)?,
+            text: row.get(1)?,
+            done: row.get(2)?,
+        })
+    })?;
+
+    for note in iter {
+        match note {
+            Ok(v) => {
+                println!("{}", v.text);
+            }
+            Err(e) => {
+                println!("{:?}", e);
+            }
+        }
+    }
     Ok(())
 }
