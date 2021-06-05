@@ -26,7 +26,7 @@ fn main() {
         1 => {
             match list() {
                 Err(e) => {
-                    println!("Couldn't list notes: {:?}", e);
+                    eprintln!("Couldn't list notes: {:?}", e);
                     std::process::exit(1);
                 }
                 _ => (),
@@ -39,7 +39,7 @@ fn main() {
                 "a" => {
                     match add() {
                         Err(e) => {
-                            println!("Couldn't add note: {:?}", e);
+                            eprintln!("Couldn't add note: {:?}", e);
                             std::process::exit(1);
                         }
                         _ => (),
@@ -50,7 +50,7 @@ fn main() {
                     // XXX: Duplicated (see above)
                     match list() {
                         Err(e) => {
-                            println!("Couldn't list notes: {:?}", e);
+                            eprintln!("Couldn't list notes: {:?}", e);
                             std::process::exit(1);
                         }
                         _ => (),
@@ -72,7 +72,7 @@ fn main() {
                 "d" => {
                     match delete(id) {
                         Err(_) => {
-                            println!("Couldn't delete note.");
+                            eprintln!("Couldn't delete note.");
                             std::process::exit(1);
                         }
                         _ => (),
@@ -81,7 +81,7 @@ fn main() {
                 "m" => {
                     match mark(id) {
                         Err(_) => {
-                            println!("Couldn't mark note {} as completed.", id);
+                            eprintln!("Couldn't mark note {} as completed.", id);
                             std::process::exit(1);
                         }
                         _ => (),
@@ -90,7 +90,7 @@ fn main() {
                 "v" => {
                     match view(id) {
                         Err(_) => {
-                            println!("Couldn't view note {}.", id);
+                            eprintln!("Couldn't view note {}.", id);
                             std::process::exit(1);
                         }
                         _ => (),
@@ -220,7 +220,7 @@ fn delete(id: u32) -> Result<(), Error> {
     };
 
     if result == 0 {
-        println!("Note {} not found.", id);
+        eprintln!("Note {} not found.", id);
         std::process::exit(1);
     }
 
@@ -250,8 +250,8 @@ fn list() -> Result<usize, Error> {
     };
 
     if result == 0 {
-        println!("No notes where found.");
-        println!("Try with the -h option for more information.");
+        eprintln!("No notes where found.");
+        eprintln!("Try with the -h option for more information.");
     }
 
     let mut stmt = conn.prepare("SELECT * FROM notes;")?;
@@ -294,7 +294,7 @@ fn mark(id: u32) -> Result<(), Error> {
     };
 
     if result == 0 {
-        println!("Note {} not found.", id);
+        eprintln!("Note {} not found.", id);
         std::process::exit(1);
     }
 
@@ -314,7 +314,7 @@ fn view(id: u32) -> Result<(), Error> {
     };
 
     if result == 0 {
-        println!("Note {} not found.", id);
+        eprintln!("Note {} not found.", id);
         std::process::exit(1);
     }
 
@@ -334,9 +334,7 @@ fn view(id: u32) -> Result<(), Error> {
             Ok(v) => {
                 println!("{}", v.text);
             }
-            Err(e) => {
-                println!("{:?}", e);
-            }
+            _ => (),
         }
     }
     Ok(())
