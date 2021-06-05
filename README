@@ -1,0 +1,22 @@
+cl
+
+Edit,view or delete notes
+
+Compile with
+cc cl.c -lsqlite3 -o cl
+
+(Optional, but recommended, check for memory errors with valgrind ./cl)
+
+Usage: cl [OPTION]... [ARGUMENT]...
+Simple note taking
+
+Options:
+  -a     add a new note
+  -d id  delete note (specified by id)
+  -e id  edit note (specified by id)
+  -h     print this message
+  -l     list all notes
+  -m id  mark note (specified by id) as completed
+  -v id  view note (specified by id)
+
+If no options are provided, the notes will be listed.
