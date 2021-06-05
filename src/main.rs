@@ -78,6 +78,15 @@ fn main() {
                         _ => (),
                     };
                 }
+                "m" => {
+                    match mark(id) {
+                        Err(_) => {
+                            println!("Couldn't mark note {} as completed.", id);
+                            std::process::exit(1);
+                        }
+                        _ => (),
+                    };
+                }
                 _ => usage(program_name),
             };
         }
@@ -172,7 +181,7 @@ fn add() -> Result<(), Error> {
     Ok(())
 }
 
-fn delete(id: u32) -> Result<(), Error> {
+fn exists(id: u32) -> Result<usize, Error> {
     match create_table() {
         Err(e) => {
             return Err(e);
@@ -190,11 +199,24 @@ fn delete(id: u32) -> Result<(), Error> {
         Err(_) => 0,
     };
 
+    Ok(result)
+}
+
+fn delete(id: u32) -> Result<(), Error> {
+    let result = match exists(id) {
+        Err(e) => {
+            return Err(e);
+        }
+        Ok(v) => v,
+    };
+
     if result == 0 {
         println!("Note {} not found.", id);
         std::process::exit(1);
     }
 
+    let db_path = get_db_path();
+    let conn = Connection::open(db_path)?;
     conn.execute("DELETE FROM notes WHERE id = ?;", [id])?;
     println!("Note deleted.");
     Ok(())
@@ -252,4 +274,24 @@ fn list() -> Result<usize, Error> {
     }
     // XXX: Souldn't this return the list of notes?
     Ok(result)
+}
+
+fn mark(id: u32) -> Result<(), Error> {
+    let result = match exists(id) {
+        Err(e) => {
+            return Err(e);
+        }
+        Ok(v) => v,
+    };
+
+    if result == 0 {
+        println!("Note {} not found.", id);
+        std::process::exit(1);
+    }
+
+    let db_path = get_db_path();
+    let conn = Connection::open(db_path)?;
+    conn.execute("UPDATE notes SET done = 1 WHERE id = ?;", [id])?;
+    println!("Note {} marked as completed.", id);
+    Ok(())
 }
