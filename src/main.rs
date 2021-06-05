@@ -1,10 +1,10 @@
-#[allow(unused_imports)]
-use rusqlite::{AndThenRows, Connection, Error, MappedRows, Result};
+use rusqlite::{Connection, Error, Result};
 use std::env;
 use std::path;
 
 const CONFIG_DIR: &str = ".config";
 const NOTES_DB: &str = "notes.db";
+const NOTE_MAX_DISPLAY_LENGTH: usize = 50;
 
 #[derive(Debug)]
 struct Counter {
@@ -40,7 +40,14 @@ fn main() {
                 }
                 "h" => usage(program_name),
                 "l" => {
-                    println!("You want to list notes");
+                    // XXX: Duplicated (see above)
+                    match list() {
+                        Err(e) => {
+                            println!("Couldn't list notes: {:?}", e);
+                            std::process::exit(1);
+                        }
+                        _ => (),
+                    };
                 }
                 _ => usage(program_name),
             };
@@ -105,13 +112,28 @@ fn list() -> Result<usize, Error> {
     })?;
 
     for note in iter {
-        // TODO: Display notes correctly
-        println!("{:?}", note);
-    }
+        match note {
+            Ok(v) => {
+                let mut text = v.text;
+                if text.len() >= NOTE_MAX_DISPLAY_LENGTH {
+                    text.truncate(NOTE_MAX_DISPLAY_LENGTH - 3);
+                    text.push_str("...");
+                }
 
+                if let Some(1) = v.done {
+                    println!("\x1b[9m{} {}\x1b[0m ", v.id, text);
+                } else {
+                    println!("{} {}", v.id, text);
+                }
+            }
+            Err(_) => (),
+        }
+    }
+    // XXX: Souldn't this return the list of notes?
     Ok(result)
 }
 
+// XXX: Shouldn't this return &str instead?
 fn get_db_path() -> String {
     let home_dir = match env::var("HOME") {
         Ok(val) => val,
@@ -148,6 +170,7 @@ fn create_table() -> Result<(), rusqlite::Error> {
             return Err(e);
         }
         Ok(_) => match conn.close() {
+            // XXX: Is this actually necessary?
             Ok(()) => Ok(()),
             Err((_, e)) => Err(e),
         },
