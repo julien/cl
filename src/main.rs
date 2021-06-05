@@ -1,5 +1,6 @@
 use rusqlite::{Connection, Error, Result};
 use std::env;
+use std::io;
 use std::path;
 
 const CONFIG_DIR: &str = ".config";
@@ -36,7 +37,13 @@ fn main() {
 
             match &cmd.to_lowercase()[..] {
                 "a" => {
-                    println!("You want to add a note");
+                    match add() {
+                        Err(e) => {
+                            println!("Couldn't add note: {:?}", e);
+                            std::process::exit(1);
+                        }
+                        _ => (),
+                    };
                 }
                 "h" => usage(program_name),
                 "l" => {
@@ -175,4 +182,33 @@ fn create_table() -> Result<(), rusqlite::Error> {
             Err((_, e)) => Err(e),
         },
     }
+}
+
+fn add() -> Result<(), Error> {
+    println!("(hit ENTER to finish):");
+    let mut buffer = String::new();
+    match io::stdin().read_line(&mut buffer) {
+        Err(_) => {
+            eprintln!("Couldn't read line");
+            std::process::exit(1);
+        }
+        _ => (),
+    };
+
+    match create_table() {
+        Err(e) => {
+            return Err(e);
+        }
+        _ => (),
+    };
+
+    let db_path = get_db_path();
+    let conn = Connection::open(db_path)?;
+
+    conn.execute(
+        "INSERT INTO notes(text) values(?);",
+        [buffer.replace('\n', "")],
+    )?;
+    println!("Note added.");
+    Ok(())
 }
