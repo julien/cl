@@ -153,17 +153,11 @@ print_notes(void *pArg, int argc, char **argv, char **columNames) {
 	int numcols = 0;
 	for (char *a = *cols; a; a = *++cols, numcols++)
 		;
-	numcols = numcols-argc;
+	numcols = numcols - argc;
 
 	char **ptr = argv;
 	int i = 0;
 	for (char *c = *ptr; c; c = *++ptr, i++) {
-		/* (Dirty) check to hide "done" column */
-		if (strcmp(c, "1") == 0) {
-			printf("\n");
-			continue;
-		}
-
 		/* Truncate */
 		size_t len = strlen(c);
 		if (len >= NOTE_MAX_DISPLAY_LENGTH) {
@@ -172,12 +166,20 @@ print_notes(void *pArg, int argc, char **argv, char **columNames) {
 			c[NOTE_MAX_DISPLAY_LENGTH] = '\0';
 		}
 
+
+		/* Don't display the "done" column */
+		if (i == NOTE_DONE_COLUMN - 1) {
+			printf("\n");
+			continue;
+		}
+
 		if (numcols == NOTE_DONE_COLUMN)
 			printf("\e[9m%s\e[0m ", c);
 		else
 			printf("%s ", c);
 
-		if (i == numcols-1) printf("\n");
+
+		if (i == numcols - 1) printf("\n");
 	}
 
 	return 0;
