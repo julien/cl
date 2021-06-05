@@ -24,12 +24,9 @@ fn main() {
     let program_name = &args[0];
     match args.len() {
         1 => {
-            match list() {
-                Err(e) => {
-                    eprintln!("Couldn't list notes: {:?}", e);
-                    std::process::exit(1);
-                }
-                _ => (),
+            if let Err(e) = list() {
+                eprintln!("Couldn't list notes: {:?}", e);
+                std::process::exit(1);
             };
         }
         2 => {
@@ -37,23 +34,17 @@ fn main() {
 
             match &cmd[..] {
                 "a" => {
-                    match add() {
-                        Err(e) => {
-                            eprintln!("Couldn't add note: {:?}", e);
-                            std::process::exit(1);
-                        }
-                        _ => (),
+                    if let Err(e) = add() {
+                        eprintln!("Couldn't add note: {:?}", e);
+                        std::process::exit(1);
                     };
                 }
                 "h" => usage(program_name),
                 "l" => {
                     // XXX: Duplicated (see above)
-                    match list() {
-                        Err(e) => {
-                            eprintln!("Couldn't list notes: {:?}", e);
-                            std::process::exit(1);
-                        }
-                        _ => (),
+                    if let Err(e) = list() {
+                        eprintln!("Couldn't list notes: {:?}", e);
+                        std::process::exit(1);
                     };
                 }
                 _ => usage(program_name),
@@ -70,30 +61,21 @@ fn main() {
 
             match &cmd[..] {
                 "d" => {
-                    match delete(id) {
-                        Err(_) => {
-                            eprintln!("Couldn't delete note.");
-                            std::process::exit(1);
-                        }
-                        _ => (),
+                    if delete(id).is_err() {
+                        eprintln!("Couldn't delete note.");
+                        std::process::exit(1);
                     };
                 }
                 "m" => {
-                    match mark(id) {
-                        Err(_) => {
-                            eprintln!("Couldn't mark note {} as completed.", id);
-                            std::process::exit(1);
-                        }
-                        _ => (),
+                    if mark(id).is_err() {
+                        eprintln!("Couldn't mark note {} as completed.", id);
+                        std::process::exit(1);
                     };
                 }
                 "v" => {
-                    match view(id) {
-                        Err(_) => {
-                            eprintln!("Couldn't view note {}.", id);
-                            std::process::exit(1);
-                        }
-                        _ => (),
+                    if view(id).is_err() {
+                        eprintln!("Couldn't view note {}.", id);
+                        std::process::exit(1);
                     };
                 }
                 _ => usage(program_name),
@@ -150,9 +132,7 @@ fn create_table() -> Result<(), rusqlite::Error> {
             id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, done INT);",
         [],
     ) {
-        Err(e) => {
-            return Err(e);
-        }
+        Err(e) => Err(e),
         Ok(_) => match conn.close() {
             // XXX: Is this actually necessary?
             Ok(()) => Ok(()),
@@ -164,19 +144,13 @@ fn create_table() -> Result<(), rusqlite::Error> {
 fn add() -> Result<(), Error> {
     println!("(hit ENTER to finish):");
     let mut buffer = String::new();
-    match io::stdin().read_line(&mut buffer) {
-        Err(_) => {
-            eprintln!("Couldn't read line");
-            std::process::exit(1);
-        }
-        _ => (),
+    if io::stdin().read_line(&mut buffer).is_err() {
+        eprintln!("Couldn't read line");
+        std::process::exit(1);
     };
 
-    match create_table() {
-        Err(e) => {
-            return Err(e);
-        }
-        _ => (),
+    if let Err(e) = create_table() {
+        return Err(e);
     };
 
     let db_path = get_db_path();
@@ -191,11 +165,8 @@ fn add() -> Result<(), Error> {
 }
 
 fn exists(id: u32) -> Result<usize, Error> {
-    match create_table() {
-        Err(e) => {
-            return Err(e);
-        }
-        _ => (),
+    if let Err(e) = create_table() {
+        return Err(e);
     };
 
     let db_path = get_db_path();
@@ -232,11 +203,8 @@ fn delete(id: u32) -> Result<(), Error> {
 }
 
 fn list() -> Result<usize, Error> {
-    match create_table() {
-        Err(e) => {
-            return Err(e);
-        }
-        _ => (),
+    if let Err(e) = create_table() {
+        return Err(e);
     };
 
     let db_path = get_db_path();
@@ -263,22 +231,17 @@ fn list() -> Result<usize, Error> {
         })
     })?;
 
-    for note in iter {
-        match note {
-            Ok(v) => {
-                let mut text = v.text;
-                if text.len() >= NOTE_MAX_DISPLAY_LENGTH {
-                    text.truncate(NOTE_MAX_DISPLAY_LENGTH - 3);
-                    text.push_str("...");
-                }
+    for note in iter.flatten() {
+        let mut text = note.text;
+        if text.len() >= NOTE_MAX_DISPLAY_LENGTH {
+            text.truncate(NOTE_MAX_DISPLAY_LENGTH - 3);
+            text.push_str("...");
+        }
 
-                if let Some(1) = v.done {
-                    println!("\x1b[9m{} {}\x1b[0m ", v.id, text);
-                } else {
-                    println!("{} {}", v.id, text);
-                }
-            }
-            Err(_) => (),
+        if let Some(1) = note.done {
+            println!("\x1b[9m{} {}\x1b[0m ", note.id, text);
+        } else {
+            println!("{} {}", note.id, text);
         }
     }
     // XXX: Souldn't this return the list of notes?
@@ -329,13 +292,8 @@ fn view(id: u32) -> Result<(), Error> {
         })
     })?;
 
-    for note in iter {
-        match note {
-            Ok(v) => {
-                println!("{}", v.text);
-            }
-            _ => (),
-        }
+    for note in iter.flatten() {
+        println!("{}", note.text);
     }
     Ok(())
 }
